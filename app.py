@@ -11,10 +11,27 @@ from pydantic import BaseModel
 import base64
 from urllib.parse import unquote
 
-QUERY = os.environ.get("QUERY", None)
-# Base64 우선
+QUERY = os.environ.get("QUERY")
 if os.environ.get("QUERY_B64"):
-    QUERY = base64.b64decode(os.environ["QUERY_B64"]).decode("utf-8")
+    try:
+        QUERY = base64.b64decode(os.environ["QUERY_B64"]).decode("utf-8")
+    except Exception as e:
+        print("Base64 decode error:", e)
+
+if os.environ.get("QUERY_URLENC"):
+    try:
+        QUERY = urllib.parse.unquote(os.environ["QUERY_URLENC"])
+    except Exception as e:
+        print("URL decode error:", e)
+
+
+if QUERY and "�" in QUERY:
+    try:
+        QUERY = QUERY.encode("latin1").decode("utf-8")
+    except Exception as e:
+        print("latin1→utf8 재복원 실패:", e)
+
+print("✅ Loaded QUERY:", QUERY)
 # (선택) URL 인코딩 대체키도 지원하려면:
 if os.environ.get("QUERY_URLENC"):
     QUERY = unquote(os.environ["QUERY_URLENC"])
