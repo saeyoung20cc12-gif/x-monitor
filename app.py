@@ -8,6 +8,17 @@ from typing import Dict, Any, Optional, Set
 from fastapi import FastAPI, Request, Response, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import base64
+from urllib.parse import unquote
+
+QUERY = os.environ.get("QUERY", None)
+# Base64 우선
+if os.environ.get("QUERY_B64"):
+    QUERY = base64.b64decode(os.environ["QUERY_B64"]).decode("utf-8")
+# (선택) URL 인코딩 대체키도 지원하려면:
+if os.environ.get("QUERY_URLENC"):
+    QUERY = unquote(os.environ["QUERY_URLENC"])
+
 
 # =====================
 # Config (ENV)
