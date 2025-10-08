@@ -3,11 +3,10 @@ import os
 import time
 import threading
 import requests
-# 맨 위 import 근처에 추가
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
 
-# (앱 생성 직후) CORS 허용 – https://snack.expo.dev, Expo Go 등에서 호출 허용
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],           # 필요시 도메인 제한 가능
@@ -18,13 +17,11 @@ from fastapi import FastAPI, Request, Response, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# ===== 환경 =====
 BEARER = os.environ["X_BEARER_TOKEN"]  # X API Bearer
 QUERY = os.environ.get("QUERY", '(솔음른 배포전 OR 솔음른배포전) -is:retweet lang:ko')
 INTERVAL_SEC = int(os.environ.get("INTERVAL_SEC", "1800"))  # 30분
 PORT = int(os.environ.get("PORT", "8080"))
 
-# ===== 상태 =====
 STATE: Dict[str, Any] = {"since_id": None, "last_run": None, "device_tokens": set()}
 
 class RegisterPayload(BaseModel):
@@ -32,7 +29,6 @@ class RegisterPayload(BaseModel):
 
 app = FastAPI()
 
-# CORS (Snack/Expo Go 포함 폭넓게 허용)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,7 +38,6 @@ app.add_middleware(
 )
 
 
-# pydantic 모델 그대로 두고, /register 와 /register-device 둘 다 허용
 @app.post("/register")
 @app.post("/register-device")
 def register_device(p: RegisterPayload = Body(...)):
@@ -57,13 +52,11 @@ from typing import List, Set, Dict, Any
 from fastapi import FastAPI, Request, Response
 from pydantic import BaseModel
 
-# ── 환경값 ─────────────────────────────────────────────────────────
 BEARER = os.environ["X_BEARER_TOKEN"]
 QUERY = os.environ.get("QUERY", '(솔음른 배포전 OR 솔음른배포전) -is:retweet lang:ko')
 INTERVAL_SEC = int(os.environ.get("INTERVAL_SEC", "1800"))  # 기본 30분
 PORT = int(os.environ.get("PORT", "8080"))
 
-# ── 상태 ───────────────────────────────────────────────────────────
 STATE: Dict[str, Any] = {"since_id": None, "last_run": None, "device_tokens": set()}  # expo tokens
 
 class RegisterPayload(BaseModel):
@@ -71,13 +64,11 @@ class RegisterPayload(BaseModel):
 
 app = FastAPI()
 
-# ── 유틸 ───────────────────────────────────────────────────────────
 def search_once(since_id=None):
     url = "https://api.x.com/2/tweets/search/recent"
     params = {"query": QUERY, "max_results": 10, "tweet.fields": "created_at,lang"}
     if since_id: params["since_id"] = since_id
 
-# ===== 유틸 =====
 def search_once(since_id=None):
     url = "https://api.x.com/2/tweets/search/recent"
     params = {"query": QUERY, "max_results": 10, "tweet.fields": "created_at,lang"}
@@ -138,11 +129,9 @@ def loop():
         time.sleep(INTERVAL_SEC)
 
 
-# ── 라우트 ─────────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 def root():  # Render 헬스체크 대응
 
-# ===== 라우트 =====
 @app.get("/", include_in_schema=False)
 def root():
 >>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
@@ -195,7 +184,4 @@ def poll_now():
     return {"ok": True, "since_id": STATE["since_id"], "last_run": STATE["last_run"]}
 
 
-# ── 백그라운드 루프 시작 ──────────────────────────────────────────
-
-# 백그라운드 폴링 시작
 threading.Thread(target=loop, daemon=True).start()
