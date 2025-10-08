@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 import os
 import time
 import threading
@@ -11,7 +11,7 @@ from fastapi import Body
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],           # 필요시 도메인 제한 가능
-=======
+
 import os, time, threading, requests
 from typing import Dict, Any
 from fastapi import FastAPI, Request, Response, Body
@@ -36,13 +36,12 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-<<<<<<< HEAD
+
 # pydantic 모델 그대로 두고, /register 와 /register-device 둘 다 허용
 @app.post("/register")
 @app.post("/register-device")
@@ -77,36 +76,34 @@ def search_once(since_id=None):
     url = "https://api.x.com/2/tweets/search/recent"
     params = {"query": QUERY, "max_results": 10, "tweet.fields": "created_at,lang"}
     if since_id: params["since_id"] = since_id
-=======
+
 # ===== 유틸 =====
 def search_once(since_id=None):
     url = "https://api.x.com/2/tweets/search/recent"
     params = {"query": QUERY, "max_results": 10, "tweet.fields": "created_at,lang"}
     if since_id:
         params["since_id"] = since_id
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
     r = requests.get(url, headers={"Authorization": f"Bearer {BEARER}"}, params=params, timeout=30)
     r.raise_for_status()
     return r.json()
 
 def notify_all(title: str, url: str = ""):
-<<<<<<< HEAD
+
     # Expo 푸시: 등록된 모든 토큰으로 발송
     msgs = [{"to": t, "sound": "default", "title": title, "body": url, "data": {"url": url}}
             for t in list(STATE["device_tokens"])]
     if not msgs: return
-=======
+
     if not STATE["device_tokens"]:
         return
     msgs = [{"to": t, "sound": "default", "title": title, "body": url, "data": {"url": url}}
             for t in list(STATE["device_tokens"])]
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
     requests.post("https://exp.host/--/api/v2/push/send", json=msgs, timeout=30)
 
 def poll_once():
     try:
         data = search_once(STATE["since_id"])
-<<<<<<< HEAD
+
         meta = data.get("meta", {})
         tweets = data.get("data", [])
         if tweets:
@@ -122,7 +119,7 @@ def poll_once():
     except requests.HTTPError as e:
         # 429 등은 자연 복구; 로그만
         print("poll error:", e)
-=======
+
         tweets = data.get("data", [])
         if tweets:
             latest_id = tweets[0]["id"]
@@ -134,18 +131,17 @@ def poll_once():
         STATE["last_run"] = int(time.time())
     except Exception as e:
         print("[poll error]", e)
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
 
 def loop():
     while True:
         poll_once()
         time.sleep(INTERVAL_SEC)
 
-<<<<<<< HEAD
+
 # ── 라우트 ─────────────────────────────────────────────────────────
 @app.get("/", include_in_schema=False)
 def root():  # Render 헬스체크 대응
-=======
+
 # ===== 라우트 =====
 @app.get("/", include_in_schema=False)
 def root():
@@ -155,18 +151,17 @@ def root():
 @app.get("/health", include_in_schema=False)
 def health():
     return {
-<<<<<<< HEAD
+
         "ok": True,
         "query": QUERY,
         "since_id": STATE["since_id"],
         "last_run": STATE["last_run"],
         "device_tokens": len(STATE["device_tokens"]),
         "interval_sec": INTERVAL_SEC,
-=======
+
         "ok": True, "query": QUERY, "since_id": STATE["since_id"],
         "last_run": STATE["last_run"], "device_tokens": len(STATE["device_tokens"]),
         "interval_sec": INTERVAL_SEC
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
     }
 
 @app.head("/", include_in_schema=False)
@@ -177,7 +172,7 @@ def head_ok(): return Response(status_code=200)
 <<<<<<< HEAD
 def register(p: RegisterPayload):
     STATE["device_tokens"].add(p.token)
-=======
+
 @app.post("/register-device")
 def register_device(p: RegisterPayload = Body(...)):
     token = p.token.strip()
@@ -185,7 +180,6 @@ def register_device(p: RegisterPayload = Body(...)):
     if "ExponentPushToken" not in token:
         return {"ok": False, "error": "invalid expo token"}
     STATE["device_tokens"].add(token)
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
     return {"ok": True, "registered_tokens": len(STATE["device_tokens"])}
 
 @app.post("/test")
@@ -200,9 +194,8 @@ def poll_now():
     poll_once()
     return {"ok": True, "since_id": STATE["since_id"], "last_run": STATE["last_run"]}
 
-<<<<<<< HEAD
+
 # ── 백그라운드 루프 시작 ──────────────────────────────────────────
-=======
+
 # 백그라운드 폴링 시작
->>>>>>> 51efe2b (chore: initial commit with app.py, requirements, Dockerfile)
 threading.Thread(target=loop, daemon=True).start()
