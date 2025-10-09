@@ -152,6 +152,7 @@ def poll_once() -> None:
         return
     try:
         data = search_recent(STATE["since_id"])
+        meta = data.get("meta", {}) 
         tweets = data.get("data", []) or []
         if tweets:
             newest_id = max(t["id"] for t in tweets)
@@ -160,6 +161,8 @@ def poll_once() -> None:
                 STATE["since_id"] = newest_id
                 STATE["cold_start"] = False
             else:
+                if STATE["since_id"] is None and meta.get("newest_id"):
+                    STATE["since_id"] = meta["newest_id"]
                 for tw in reversed(tweets):  # oldest -> newest
                     tid = tw["id"]
                     text = tw.get("text", "")
