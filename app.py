@@ -11,7 +11,30 @@ from pydantic import BaseModel
 import base64
 from urllib.parse import unquote
 
-QUERY = os.environ.get("QUERY")
+BEARER = os.environ["X_BEARER_TOKEN"]
+QUERY  = os.environ.get("QUERY", "(솔음른 배포전 OR 솔음른배포전)")
+MAX_RESULTS = int(os.environ.get("MAX_RESULTS", "1"))
+USE_TWITTER_DOMAIN = os.environ.get("USE_TWITTER_DOMAIN", "0")  # "1"이면 api.twitter.com 사용
+SEARCH_URL = (
+    "https://api.twitter.com/2/tweets/search/recent"
+    if USE_TWITTER_DOMAIN == "1"
+    else "https://api.x.com/2/tweets/search/recent"
+)
+def search_once(since_id=None):
+    """query + max_results (+ since_id)만 보내는 최소 호출"""
+    params = {"query": QUERY, "max_results": MAX_RESULTS}
+    if since_id:
+        params["since_id"] = since_id
+
+    r = requests.get(
+        SEARCH_URL,
+        headers={"Authorization": f"Bearer {BEARER}"},
+        params=params,
+        timeout=30,
+    )
+    r.raise_for_status()  # 4xx/5xx면 예외
+    return r.json()
+    
 if os.environ.get("QUERY_B64"):
     try:
         QUERY = base64.b64decode(os.environ["QUERY_B64"]).decode("utf-8")
@@ -148,18 +171,21 @@ def notify_all(title: str, url: str = "") -> None:
 # =====================
 def poll_once():
     try:
-        data = search_once(STATE["since_id"])
-        meta = data.get("meta", {})
+        data  = search_once(STATE["since_id"])
+        meta  = data.get("meta", {})
         tweets = data.get("data", [])
 
         if tweets:
             latest_id = tweets[0]["id"]
             STATE["since_id"] = latest_id if STATE["since_id"] is None else max(STATE["since_id"], latest_id)
             for tw in reversed(tweets):
-                notify_all(tw.get("text",""), f"https://x.com/i/web/status/{tw['id']}")
+                text = tw.get("text", "")
+                link = f"https://x.com/i/web/status/{tw['id']}"
+                notify_all(text, link)
         else:
-            if STATE["since_id"] is None and meta.get("newest_id"):
-                STATE["since_id"] = meta["newest_id"]  # 결과 0건이어도 기준점 세팅
+            # 결과가 없어도 기준점 세팅(알림X)
+            if STATE.get("since_id") is None and meta.get("newest_id"):
+                STATE["since_id"] = meta["newest_id"]
 
         STATE["last_run"] = int(time.time())
         STATE["last_error"] = None
@@ -174,7 +200,7 @@ def poll_once():
     except Exception as e:
         print("[poll error]", e)
         STATE["last_error"] = {"error": str(e)}
-
+        
 def loop() -> None:
     while True:
         poll_once()
