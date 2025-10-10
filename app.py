@@ -103,7 +103,7 @@ if persisted:
 # X (Twitter) search v2
 # =====================
 def search_recent(since_id: Optional[str]) -> Dict[str, Any]:
-    url = "https://api.x.com/2/tweets/search/recent"
+    url = "https://api.twitter.com/2/tweets/search/recent"
     params = {
         "query": QUERY,
         "max_results": MAX_RESULTS,
@@ -146,38 +146,34 @@ def notify_all(title: str, url: str = "") -> None:
 # =====================
 # Poller
 # =====================
-def poll_once() -> None:
-    now = int(time.time())
-    if STATE["backoff_until"] and now < STATE["backoff_until"]:
-        return
+def poll_once():
     try:
-        data = search_recent(STATE["since_id"])
-        meta = data.get("meta", {}) 
-        tweets = data.get("data", []) or []
+        data = search_once(STATE["since_id"])
+        meta = data.get("meta", {})
+        tweets = data.get("data", [])
+
         if tweets:
-            newest_id = max(t["id"] for t in tweets)
-            if STATE["cold_start"] and STATE["since_id"] is None:
-                save_since_id(newest_id)
-                STATE["since_id"] = newest_id
-                STATE["cold_start"] = False
-            else:
-                if STATE["since_id"] is None and meta.get("newest_id"):
-                    STATE["since_id"] = meta["newest_id"]
-                for tw in reversed(tweets):  # oldest -> newest
-                    tid = tw["id"]
-                    text = tw.get("text", "")
-                    link = f"https://x.com/i/web/status/{tid}"
-                    notify_all(text, link)
-                save_since_id(newest_id)
-                STATE["since_id"] = newest_id
+            latest_id = tweets[0]["id"]
+            STATE["since_id"] = latest_id if STATE["since_id"] is None else max(STATE["since_id"], latest_id)
+            for tw in reversed(tweets):
+                notify_all(tw.get("text",""), f"https://x.com/i/web/status/{tw['id']}")
+        else:
+            if STATE["since_id"] is None and meta.get("newest_id"):
+                STATE["since_id"] = meta["newest_id"]  # 결과 0건이어도 기준점 세팅
+
         STATE["last_run"] = int(time.time())
+        STATE["last_error"] = None
+
     except requests.HTTPError as e:
-        status = getattr(e.response, "status_code", None)
-        print("[poll http error]", status, e)
-        if status == 429:
-            STATE["backoff_until"] = int(time.time()) + 120
+        try:
+            err = e.response.json()
+        except Exception:
+            err = {"status_code": e.response.status_code, "text": e.response.text[:300]}
+        print("[poll http error]", err)
+        STATE["last_error"] = err
     except Exception as e:
         print("[poll error]", e)
+        STATE["last_error"] = {"error": str(e)}
 
 def loop() -> None:
     while True:
