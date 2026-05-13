@@ -1,5 +1,5 @@
 markdown
-# x-monitor (키워드 알림 알림)
+# x-monitor (키워드 알림)
 
 X(트위터) 검색 `recent` API로 아래 키워드의 **새 게시물만** 감지해 푸시/웹훅으로 알림합니다.
 
